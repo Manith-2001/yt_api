@@ -1,4 +1,4 @@
-PROG ?= example                   # Program we are building
+PROG ?= wcurl                   # Program we are building
 DELETE = rm -rf                   # Command to remove files
 OUT ?= -o $(PROG)                 # Compiler argument for output file
 SOURCES = main.c mongoose/mongoose.c       # Source code files
@@ -9,7 +9,7 @@ CFLAGS_MONGOOSE += -DMG_ENABLE_LINES=1
 CFLAGS_EXTRA ?= -DMG_TLS=MG_TLS_BUILTIN
 
 ifeq ($(OS),Windows_NT)   # Windows settings. Assume MinGW compiler. To use VC: make CC=cl CFLAGS=/MD OUT=/Feprog.exe
-  PROG ?= example.exe           # Use .exe suffix for the binary
+  PROG ?= wcurl.exe           # Use .exe suffix for the binary
   CC = gcc                      # Use MinGW gcc compiler
   CFLAGS += -lws2_32            # Link against Winsock library
   DELETE = cmd /C del /Q /F /S  # Command prompt command to delete files
