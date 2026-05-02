@@ -1,189 +1,103 @@
-// Copyright (c) 2024 Cesanta Software Limited
+// Copyright (c) 2020 Cesanta Software Limited
 // All rights reserved
+//
+// HTTP server example. This server serves both static and dynamic content.
+// It opens two ports: plain HTTP on port 8000 and HTTP on port 8443.
+// It implements the following endpoints:
+//    /api/stats - respond with free-formatted stats on current connections
+//    /api/f2/:id - wildcard example, respond with JSON string {"result": "URI"}
+//    any other URI serves static files from s_root_dir
+//
+// To enable SSL/TLS (using self-signed certificates in PEM files),
+//    1. See https://mongoose.ws/tutorials/tls/#how-to-build
+//    2. curl -k https://127.0.0.1:8443
 
-#include <signal.h>
 #include "mongoose/mongoose.h"
 
-// Stub for mg_packed_files - not using the dashboard
 const struct mg_mem_file mg_packed_files[] = {{NULL, NULL, 0}};
+static const char *s_http_addr = "http://0.0.0.0:8000";    // HTTP port
+static const char *s_https_addr = "https://0.0.0.0:8443";  // HTTPS port
+static const char *s_root_dir = ".";
 
-static int s_debug_level = MG_LL_INFO;
-static int s_max_size = 10000;
-static const char *s_root_dir = "web_root";
-static const char *s_upld_dir = "upload";
-static const char *s_listening_address = "http://0.0.0.0:8090";
-static const char *s_user = "user";
-static const char *s_pass = "pass";
+// Self signed certificates, see
+// https://github.com/cesanta/mongoose/blob/master/test/certs/generate.sh
+#ifdef TLS_TWOWAY
+static const char *s_tls_ca =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBFTCBvAIJAMNTFtpfcq8NMAoGCCqGSM49BAMCMBMxETAPBgNVBAMMCE1vbmdv\n"
+    "b3NlMB4XDTI0MDUwNzE0MzczNloXDTM0MDUwNTE0MzczNlowEzERMA8GA1UEAwwI\n"
+    "TW9uZ29vc2UwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASuP+86T/rOWnGpEVhl\n"
+    "fxYZ+pjMbCmDZ+vdnP0rjoxudwRMRQCv5slRlDK7Lxue761sdvqxWr0Ma6TFGTNg\n"
+    "epsRMAoGCCqGSM49BAMCA0gAMEUCIQCwb2CxuAKm51s81S6BIoy1IcandXSohnqs\n"
+    "us64BAA7QgIgGGtUrpkgFSS0oPBlCUG6YPHFVw42vTfpTC0ySwAS0M4=\n"
+    "-----END CERTIFICATE-----\n";
+#endif
+static const char *s_tls_cert =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBMTCB2aADAgECAgkAluqkgeuV/zUwCgYIKoZIzj0EAwIwEzERMA8GA1UEAwwI\n"
+    "TW9uZ29vc2UwHhcNMjQwNTA3MTQzNzM2WhcNMzQwNTA1MTQzNzM2WjARMQ8wDQYD\n"
+    "VQQDDAZzZXJ2ZXIwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASo3oEiG+BuTt5y\n"
+    "ZRyfwNr0C+SP+4M0RG2pYkb2v+ivbpfi72NHkmXiF/kbHXtgmSrn/PeTqiA8M+mg\n"
+    "BhYjDX+zoxgwFjAUBgNVHREEDTALgglsb2NhbGhvc3QwCgYIKoZIzj0EAwIDRwAw\n"
+    "RAIgTXW9MITQSwzqbNTxUUdt9DcB+8pPUTbWZpiXcA26GMYCIBiYw+DSFMLHmkHF\n"
+    "+5U3NXW3gVCLN9ntD5DAx8LTG8sB\n"
+    "-----END CERTIFICATE-----\n";
 
-// Handle interrupts, like Ctrl-C
-static int s_signo;
-static void signal_handler(int signo) {
-  s_signo = signo;
-}
+static const char *s_tls_key =
+    "-----BEGIN EC PRIVATE KEY-----\n"
+    "MHcCAQEEIAVdo8UAScxG7jiuNY2UZESNX/KPH8qJ0u0gOMMsAzYWoAoGCCqGSM49\n"
+    "AwEHoUQDQgAEqN6BIhvgbk7ecmUcn8Da9Avkj/uDNERtqWJG9r/or26X4u9jR5Jl\n"
+    "4hf5Gx17YJkq5/z3k6ogPDPpoAYWIw1/sw==\n"
+    "-----END EC PRIVATE KEY-----\n";
 
-static bool authuser(struct mg_http_message *hm) {
-  char user[256], pass[256];
-  mg_http_creds(hm, user, sizeof(user), pass, sizeof(pass));
-  if (strcmp(user, s_user) == 0 && strcmp(pass, s_pass) == 0) return true;
-  return false;
-}
-
-struct upload_state {
-  size_t expected;  // POST data length, bytes
-  size_t received;  // Already received bytes
-  void *fp;         // Opened uploaded file
-};
-
-static void handle_uploads(struct mg_connection *c, int ev, void *ev_data) {
-  struct upload_state *us = (struct upload_state *) c->data;
-  struct mg_fs *fs = &mg_fs_posix;
-
-  // Catch /upload requests early, without buffering whole body
-  // When we receive MG_EV_HTTP_HDRS event, that means we've received all
-  // HTTP headers but not necessarily full HTTP body
-  if (ev == MG_EV_HTTP_HDRS) {
+// We use the same event handler function for HTTP and HTTPS connections
+// fn_data is NULL for plain HTTP, and non-NULL for HTTPS
+static void fn(struct mg_connection *c, int ev, void *ev_data) {
+  if (ev == MG_EV_ACCEPT && c->is_tls) {
+    struct mg_tls_opts opts;
+    memset(&opts, 0, sizeof(opts));
+#ifdef TLS_TWOWAY
+    opts.ca = mg_str(s_tls_ca);
+#endif
+    opts.cert = mg_str(s_tls_cert);
+    opts.key = mg_str(s_tls_key);
+    mg_tls_init(c, &opts);
+  }
+  if (ev == MG_EV_HTTP_MSG) {
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-    if (mg_match(hm->uri, mg_str("/upload/#"), NULL)) {
-      c->pfn = NULL;  // Silence HTTP protocol handler, we'll take over
-      if (!authuser(hm)) {
-        mg_http_reply(c, 403, "", "Denied\n");
-        c->is_draining = 1;  // Tell mongoose to close this connection
-      } else if (hm->body.len > (size_t) s_max_size) {
-        mg_http_reply(c, 400, "", "Too long\n");
-        c->is_draining = 1;           // Tell mongoose to close this connection
-      } else if (hm->uri.len == 8) {  // 8: /upload/
-        mg_http_reply(c, 400, "", "Name required\n");
-        c->is_draining = 1;  // Tell mongoose to close this connection
-      } else if (strlen(s_upld_dir) + (hm->uri.len - 8) + 2 >
-                 MG_PATH_MAX) {  // 2: MG_DIRSEP + NUL
-        mg_http_reply(c, 400, "", "Path is too long\n");
-        c->is_draining = 1;  // Tell mongoose to close this connection
-      } else {
-        char fpath[MG_PATH_MAX];
-        snprintf(fpath, MG_PATH_MAX, "%s%c", s_upld_dir, MG_DIRSEP);
-        strncat(fpath, hm->uri.buf + 8, hm->uri.len - 8);
-        if (!mg_path_is_sane(mg_str(fpath))) {
-          mg_http_reply(c, 400, "", "Invalid path\n");
-          c->is_draining = 1;  // Tell mongoose to close this connection
-        } else {
-          struct mg_fd *fd;
-          MG_DEBUG(("Got request"));
-          fs->rm(fpath);  // Delete file if it exists
-          if ((fd = fs->op(fpath, MG_FS_WRITE)) == NULL) {
-            mg_http_reply(c, 400, "", "open failed: %d\n", errno);
-            c->is_draining = 1;  // Tell mongoose to close this connection
-          } else {
-            us->fp = fd;
-            us->expected = hm->body.len;  // Store number of bytes we expect
-            mg_iobuf_del(&c->recv, 0, hm->head.len);  // Delete HTTP headers
-          }
-        }
+    if (mg_match(hm->uri, mg_str("/api/stats"), NULL)) {
+      struct mg_connection *t;
+      // Print some statistics about currently established connections
+      mg_printf(c, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
+      mg_http_printf_chunk(c, "ID PROTO TYPE      LOCAL           REMOTE\n");
+      for (t = c->mgr->conns; t != NULL; t = t->next) {
+        mg_http_printf_chunk(c, "%-3lu %4s %s %M %M\n", t->id,
+                             t->is_udp ? "UDP" : "TCP",
+                             t->is_listening  ? "LISTENING"
+                             : t->is_accepted ? "ACCEPTED "
+                                              : "CONNECTED",
+                             mg_print_ip, &t->loc, mg_print_ip, &t->rem);
       }
-    }
-  }
-
-  // Catch uploaded file data for both MG_EV_READ and MG_EV_HTTP_HDRS
-  if (us->expected > 0 && c->recv.len > 0) {
-    us->received += c->recv.len;
-    MG_DEBUG(("Got chunk: %lu bytes, %lu so far, %lu total", c->recv.len,
-              us->received, us->expected));
-    if (us->fp) fs->wr(us->fp, c->recv.buf, c->recv.len);  // Write to file
-    c->recv.len = 0;  // Delete received data
-    if (us->received >= us->expected) {
-      // Uploaded everything. Send response back
-      MG_INFO(("Uploaded %lu bytes", us->received));
-      mg_http_reply(c, 200, NULL, "%lu ok\n", us->received);
-      if (us->fp) fs->cl(us->fp);  // Close file
-      memset(us, 0, sizeof(*us));  // Cleanup upload state
-      c->is_draining = 1;          // Close connection when response gets sent
-    }
-  }
-}
-
-static void cb(struct mg_connection *c, int ev, void *ev_data) {
-  if (ev == MG_EV_READ || ev == MG_EV_HTTP_HDRS) {
-    handle_uploads(c, ev, ev_data);
-  } else if (ev == MG_EV_HTTP_MSG && c->pfn != NULL) {
-    // Non-upload requests, we serve normally
-    // NOTE: handle_uploads() may delete request and reset c->pfn
-    struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-    struct mg_http_serve_opts opts = {0};
-    opts.root_dir = s_root_dir;
-    mg_http_serve_dir(c, hm, &opts);
-  }
-}
-
-static void usage(const char *prog) {
-  fprintf(stderr,
-          "File Transfer server based on Mongoose v.%s\n"
-          "Usage: %s OPTIONS\n"
-          "  -u NAME   - user name, default: '%s'\n"
-          "  -p PWD    - password, default: '%s'\n"
-          "  -d DIR    - directory to serve, default: '%s'\n"
-          "  -D DIR    - directory to store uploads, default: '%s'\n"
-          "  -s SIZE   - maximum allowed file size, default: '%d'\n"
-          "  -l ADDR   - listening address, default: '%s'\n"
-          "  -v LEVEL  - debug level, from 0 to 4, default: %d\n",
-          MG_VERSION, prog, s_user, s_pass, s_root_dir, s_upld_dir, s_max_size,
-          s_listening_address, s_debug_level);
-  exit(EXIT_FAILURE);
-}
-
-int main(int argc, char *argv[]) {
-  char spath[MG_PATH_MAX] = ".";
-  char upath[MG_PATH_MAX] = ".";
-  struct mg_mgr mgr;
-  int i;
-
-  // Parse command-line flags
-  for (i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "-d") == 0) {
-      s_root_dir = argv[++i];
-    } else if (strcmp(argv[i], "-D") == 0) {
-      s_upld_dir = argv[++i];
-    } else if (strcmp(argv[i], "-u") == 0) {
-      s_user = argv[++i];
-    } else if (strcmp(argv[i], "-p") == 0) {
-      s_pass = argv[++i];
-    } else if (strcmp(argv[i], "-l") == 0) {
-      s_listening_address = argv[++i];
-    } else if (strcmp(argv[i], "-v") == 0) {
-      s_debug_level = atoi(argv[++i]);
-    } else if (strcmp(argv[i], "-s") == 0) {
-      s_max_size = atoi(argv[++i]);
+      mg_http_printf_chunk(c, "");  // Don't forget the last empty chunk
+    } else if (mg_match(hm->uri, mg_str("/api/f2/*"), NULL)) {
+      mg_http_reply(c, 200, "", "{\"result\": \"%.*s\"}\n", hm->uri.len,
+                    hm->uri.buf);
     } else {
-      usage(argv[0]);
+      struct mg_http_serve_opts opts;
+      memset(&opts, 0, sizeof(opts));
+      opts.root_dir = s_root_dir;
+      mg_http_serve_dir(c, ev_data, &opts);
     }
   }
+}
 
-  // Root directory must not contain double dots. Make it absolute
-  // Do the conversion only if the root dir spec does not contain overrides
-  if (strchr(s_root_dir, ',') == NULL) {
-    realpath(s_root_dir, spath);
-    s_root_dir = spath;
-  }
-  if (strchr(s_upld_dir, ',') == NULL) {
-    realpath(s_upld_dir, upath);
-    s_upld_dir = upath;
-  }
-
-  // Initialise stuff
-  signal(SIGINT, signal_handler);
-  signal(SIGTERM, signal_handler);
-  mg_log_set(s_debug_level);
-  mg_mgr_init(&mgr);
-  if (mg_http_listen(&mgr, s_listening_address, cb, NULL) == NULL) {
-    MG_ERROR(("Cannot listen on %s.", s_listening_address));
-    exit(EXIT_FAILURE);
-  }
-
-  // Start infinite event loop
-  MG_INFO(("Mongoose version : v%s", MG_VERSION));
-  MG_INFO(("Listening on     : %s", s_listening_address));
-  MG_INFO(("Web root         : [%s]", s_root_dir));
-  MG_INFO(("Uploading to     : [%s]", s_upld_dir));
-  while (s_signo == 0) mg_mgr_poll(&mgr, 1000);
+int main(void) {
+  struct mg_mgr mgr;                             // Event manager
+  mg_log_set(MG_LL_DEBUG);                       // Set log level
+  mg_mgr_init(&mgr);                             // Initialise event manager
+  mg_http_listen(&mgr, s_http_addr, fn, NULL);   // Create HTTP listener
+  mg_http_listen(&mgr, s_https_addr, fn, NULL);  // HTTPS listener
+  for (;;) mg_mgr_poll(&mgr, 1000);              // Infinite event loop
   mg_mgr_free(&mgr);
-  MG_INFO(("Exiting on signal %d", s_signo));
   return 0;
 }
