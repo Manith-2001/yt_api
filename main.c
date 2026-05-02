@@ -15,8 +15,8 @@
 #include "mongoose/mongoose.h"
 
 const struct mg_mem_file mg_packed_files[] = {{NULL, NULL, 0}};
-static const char *s_http_addr = "http://0.0.0.0:8000";    // HTTP port
-static const char *s_https_addr = "https://0.0.0.0:8443";  // HTTPS port
+static const char *s_http_addr = "http://0.0.0.0:8000";   // HTTP port
+static const char *s_https_addr = "https://0.0.0.0:8443"; // HTTPS port
 static const char *s_root_dir = ".";
 
 // Self signed certificates, see
@@ -64,7 +64,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
     mg_tls_init(c, &opts);
   }
   if (ev == MG_EV_HTTP_MSG) {
-    struct mg_http_message *hm = (struct mg_http_message *) ev_data;
+    struct mg_http_message *hm = (struct mg_http_message *)ev_data;
     if (mg_match(hm->uri, mg_str("/api/stats"), NULL)) {
       struct mg_connection *t;
       // Print some statistics about currently established connections
@@ -78,10 +78,14 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
                                               : "CONNECTED",
                              mg_print_ip, &t->loc, mg_print_ip, &t->rem);
       }
-      mg_http_printf_chunk(c, "");  // Don't forget the last empty chunk
+      mg_http_printf_chunk(c, ""); // Don't forget the last empty chunk
     } else if (mg_match(hm->uri, mg_str("/api/f2/*"), NULL)) {
       mg_http_reply(c, 200, "", "{\"result\": \"%.*s\"}\n", hm->uri.len,
                     hm->uri.buf);
+    } else if (mg_match(hm->uri, mg_str("/api/data"), NULL) &&
+               mg_match(hm->method, mg_str("POST"), NULL)) {
+      mg_http_reply(c, 200, "", "{\"received\": \"%.*s\"}\n", (int)hm->body.len,
+                    hm->body.buf);
     } else {
       struct mg_http_serve_opts opts;
       memset(&opts, 0, sizeof(opts));
@@ -92,12 +96,13 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
 }
 
 int main(void) {
-  struct mg_mgr mgr;                             // Event manager
-  mg_log_set(MG_LL_DEBUG);                       // Set log level
-  mg_mgr_init(&mgr);                             // Initialise event manager
-  mg_http_listen(&mgr, s_http_addr, fn, NULL);   // Create HTTP listener
-  mg_http_listen(&mgr, s_https_addr, fn, NULL);  // HTTPS listener
-  for (;;) mg_mgr_poll(&mgr, 1000);              // Infinite event loop
+  struct mg_mgr mgr;                            // Event manager
+  mg_log_set(MG_LL_DEBUG);                      // Set log level
+  mg_mgr_init(&mgr);                            // Initialise event manager
+  mg_http_listen(&mgr, s_http_addr, fn, NULL);  // Create HTTP listener
+  mg_http_listen(&mgr, s_https_addr, fn, NULL); // HTTPS listener
+  for (;;)
+    mg_mgr_poll(&mgr, 1000); // Infinite event loop
   mg_mgr_free(&mgr);
   return 0;
 }
