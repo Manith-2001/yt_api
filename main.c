@@ -13,6 +13,7 @@
 //    2. curl -k https://127.0.0.1:8443
 
 #include "mongoose/mongoose.h"
+#include "utils/utils.h"
 
 const struct mg_mem_file mg_packed_files[] = {{NULL, NULL, 0}};
 static const char *s_http_addr = "http://0.0.0.0:8000";   // HTTP port
@@ -96,6 +97,9 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
 }
 
 int main(void) {
+  if (!check_yt_dlp()) {
+    return 0;
+  }
   struct mg_mgr mgr;                            // Event manager
   mg_log_set(MG_LL_DEBUG);                      // Set log level
   mg_mgr_init(&mgr);                            // Initialise event manager
