@@ -1,35 +1,26 @@
-SPROG ?= main
-CPROG ?= client
-DELETE = rm -rf
-SOUT ?= -o $(SPROG)
-COUT ?= -o $(CPROG)
-SSOURCES = main.c mongoose/mongoose.c
-CSOURCES = client.c mongoose.c
-CFLAGS = -W -Wall -Wextra -g -I.
-# Mongoose build options. See https://mongoose.ws/documentation/#build-options
-#CFLAGS_MONGOOSE += -DMG_ENABLE_LINES
-CFLAGS_MONGOOSE += -DMG_ENABLE_DASHBOARD=0   # <-- add this
+PROG ?= example                   # Program we are building
+DELETE = rm -rf                   # Command to remove files
+OUT ?= -o $(PROG)                 # Compiler argument for output file
+SOURCES = main.c mongoose/mongoose.c       # Source code files
+CFLAGS = -W -Wall -Wextra -g -I.  # Build options
 
-ifeq ($(OS),Windows_NT)
-  SPROG ?= main.exe
-  CPROG ?= client.exe
-  CC = gcc
-  CFLAGS += -lws2_32
-  DELETE = cmd /C del /Q /F /S
-  SOUT ?= -o $(SPROG)
-  COUT ?= -o $(CPROG)
+# Mongoose build options. See https://mongoose.ws/documentation/#build-options
+CFLAGS_MONGOOSE += -DMG_ENABLE_LINES=1
+CFLAGS_EXTRA ?= -DMG_TLS=MG_TLS_BUILTIN
+
+ifeq ($(OS),Windows_NT)   # Windows settings. Assume MinGW compiler. To use VC: make CC=cl CFLAGS=/MD OUT=/Feprog.exe
+  PROG ?= example.exe           # Use .exe suffix for the binary
+  CC = gcc                      # Use MinGW gcc compiler
+  CFLAGS += -lws2_32            # Link against Winsock library
+  DELETE = cmd /C del /Q /F /S  # Command prompt command to delete files
+  OUT ?= -o $(PROG)             # Build output
 endif
 
-all: example
-	$(RUN) ./$(SPROG) $(SARGS)
+all: $(PROG)
+	$(RUN) ./$(PROG) $(ARGS)
 
-example: $(SPROG) $(CPROG)
-
-$(SPROG): $(SSOURCES)
-	$(CC) $(SSOURCES) $(CFLAGS) $(CFLAGS_MONGOOSE) $(CFLAGS_EXTRA) $(SOUT)
-
-$(CPROG): $(CSOURCES)
-	$(CC) $(CSOURCES) $(CFLAGS) $(CFLAGS_MONGOOSE) $(CFLAGS_EXTRA) $(COUT)
+$(PROG): $(SOURCES) Makefile
+	$(CC) $(SOURCES) $(CFLAGS) $(CFLAGS_MONGOOSE) $(CFLAGS_EXTRA) $(OUT)
 
 clean:
-	$(DELETE) $(SPROG) $(CPROG) *.o *.obj *.exe *.dSYM
+	$(DELETE) $(PROG) *.o *.obj *.exe *.dSYM
