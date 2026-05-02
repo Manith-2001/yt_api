@@ -1,7 +1,7 @@
 PROG ?= wcurl                   # Program we are building
 DELETE = rm -rf                   # Command to remove files
 OUT ?= -o $(PROG)                 # Compiler argument for output file
-SOURCES = main.c mongoose/mongoose.c       # Source code files
+SOURCES = main.c mongoose/*.c utils/*.c       # Source code files
 CFLAGS = -W -Wall -Wextra -g -I.  # Build options
 
 # Mongoose build options. See https://mongoose.ws/documentation/#build-options
@@ -14,6 +14,11 @@ ifeq ($(OS),Windows_NT)   # Windows settings. Assume MinGW compiler. To use VC: 
   CFLAGS += -lws2_32            # Link against Winsock library
   DELETE = cmd /C del /Q /F /S  # Command prompt command to delete files
   OUT ?= -o $(PROG)             # Build output
+endif
+
+# Check for required tools
+ifeq ($(shell command -v yt-dlp 2>/dev/null),)
+  $(error "yt-dlp not found in PATH. Please install it: https://github.com/yt-dlp/yt-dlp#installation")
 endif
 
 all: $(PROG)
