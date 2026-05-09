@@ -22,7 +22,6 @@ void *download_function(void *arg) {
     char *link = dequeu_download();
     if (link) {
       yt_download(link);
-      printf("received link : %s for downloading\n", link);
       free(link);
     }
   }
