@@ -1,7 +1,16 @@
 #include "../mongoose/mongoose.h"
+#include <stdio.h>
 
 void data_handler(struct mg_connection *c, struct mg_http_message *hm) {
-  mg_http_reply(c, 200, "", "{\"received\": \"%.*s\"}\n", (int)hm->body.len,
-                hm->body.buf);
+  char *link = mg_json_get_str(hm->body, "$.link");
+
+  if (link == NULL) {
+    mg_http_reply(c, 400, "", "{\"error\": \"missing 'link' field\"}\n");
+    return;
+  }
+  printf("The links is : %s\n", link);
+
+  mg_http_reply(c, 200, "", "{\"received\": \"%s\"}\n", link);
+  mg_free(link);
   return;
 }
