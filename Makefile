@@ -1,7 +1,8 @@
 PROG ?= wcurl                   # Program we are building
 DELETE = rm -rf                   # Command to remove files
 OUT ?= -o $(PROG)                 # Compiler argument for output file
-SOURCES = main.c mongoose/*.c utils/*.c       # Source code files
+SOURCES += $(wildcard *.c)	  # Source code files
+SOURCES += $(wildcard **/*.c)	  # Source code files
 CFLAGS = -W -Wall -Wextra -g -I.  # Build options
 
 # Mongoose build options. See https://mongoose.ws/documentation/#build-options
