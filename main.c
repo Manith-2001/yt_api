@@ -14,7 +14,10 @@
 
 #include "mongoose/mongoose.h"
 #include "router.h"
+#include "threads/downloader_thread.h"
+#include "threads/job_queue.h"
 #include "utils/utils.h"
+#include <pthread.h>
 
 const struct mg_mem_file mg_packed_files[] = {{NULL, NULL, 0}};
 static const char *s_http_addr = "http://0.0.0.0:8000";   // HTTP port
@@ -118,6 +121,8 @@ int main(void) {
   if (!check_yt_dlp()) {
     return 0;
   }
+  download_thread_init();
+  queue_init();
   struct mg_mgr mgr;                            // Event manager
   mg_log_set(MG_LL_DEBUG);                      // Set log level
   mg_mgr_init(&mgr);                            // Initialise event manager
