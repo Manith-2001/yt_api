@@ -1,4 +1,5 @@
 #include "downloader_thread.h"
+#include "../utils/yt_downloader.h"
 #include "job_queue.h"
 #include <pthread.h>
 #include <stdio.h>
@@ -20,6 +21,7 @@ void *download_function(void *arg) {
   while (1) {
     char *link = dequeu_download();
     if (link) {
+      yt_download(link);
       printf("received link : %s for downloading\n", link);
       free(link);
     }
