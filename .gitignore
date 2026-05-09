@@ -54,4 +54,5 @@ dkms.conf
 # debug information files
 *.dwo
 yt-api
+/tmp
 *.DS_Store
