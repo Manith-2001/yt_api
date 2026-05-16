@@ -121,8 +121,8 @@ int main(void) {
   if (!check_yt_dlp()) {
     return 0;
   }
-  download_thread_init();
   queue_init();
+  download_thread_init();
   struct mg_mgr mgr;                            // Event manager
   mg_log_set(MG_LL_DEBUG);                      // Set log level
   mg_mgr_init(&mgr);                            // Initialise event manager
