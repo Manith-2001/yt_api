@@ -56,6 +56,7 @@ void *api_function(void *arg) {
         }
         fclose(f);
         send(sockfd, "0\r\n\r\n", 5, MSG_NOSIGNAL);
+	shutdown(sockfd, SHUT_WR);
       } else {
         printf("Streaming error \n");
         perror("Error opening file");
