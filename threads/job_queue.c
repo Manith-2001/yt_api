@@ -56,7 +56,7 @@ void enque_completed(char *link, int tid) {
   if (msgsnd(completequeue_id, &c_msg, sizeof(completed_msg) - sizeof(long),
              0) == -1) {
     // TDOO : handle error sending message
-    printf("Error sending message to download queue\n");
+    printf("Error sending message to completed queue\n");
   }
 }
 
