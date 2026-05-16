@@ -1,5 +1,6 @@
 #include "api_thread.h"
 #include "job_queue.h"
+#include <_stdio.h>
 #include <_time.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -12,35 +13,54 @@
 void *api_function(void *arg) {
   WorkerArgs *args = arg;
   pthread_t tid = pthread_self();
-  printf("Spun api thread of id : %d", *(int *)tid);
+  printf("Spun api thread of id : %d\n", *(int *)tid);
   int sockfd = (int)(intptr_t)args->fd;
   enque_download(args->link, *(int *)tid);
   // Send headers once — no Content-Length, chunked encoding
   const char *headers = "HTTP/1.1 200 OK\r\n"
                         "Transfer-Encoding: chunked\r\n"
-                        "Content-Type: video/mp4\r\n"
+                        "Content-Type: video/webm\r\n"
                         "Connection: close\r\n\r\n";
   send(sockfd, headers, strlen(headers), 0);
 
   // Keep sending chunks until client disconnects
   char *json_body =
-      "{\"status\": \"success\", \"message\": \"Hello from C API\"}";
+      "{\"status\": \"success\", \"message\": \"Your download is queued\"}";
   while (1) {
-    char chunk[1024];
-    int chunk_len = snprintf(chunk, sizeof(chunk),
-                             "%zx\r\n%s\r\n", // hex size, CRLF, data, CRLF
-                             strlen(json_body), json_body);
+    // char chunk[1024];
+    // int chunk_len = snprintf(chunk, sizeof(chunk),
+    //                          "%zx\r\n%s\r\n", // hex size, CRLF, data, CRLF
+    //                          strlen(json_body), json_body);
 
-    int n = send(sockfd, chunk, chunk_len, MSG_NOSIGNAL);
-    if (n <= 0) {
-      printf("client gone\n");
-      break; // client gone
-    }
+    // int n = send(sockfd, chunk, chunk_len, MSG_NOSIGNAL);
+    // if (n <= 0) {
+    //   printf("client gone\n");
+    //   break; // client gone
+    // }
     completed_msg c_msg = dequeu_completed();
     printf("Got link : %s of id : %d\n", c_msg.link, c_msg.tid);
     if (c_msg.tid == *(int *)tid) {
-      printf("my link breaking\n");
-      // free(c_msg.link);
+      FILE *f = fopen(c_msg.link, "rb");
+      if (f) {
+        printf("Streaming Downloaded file\n");
+        char buf[8192];
+        int n;
+        while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
+          // printf("Sending chunk of size : %d\n", n);
+          char chunk_header[32];
+          int hdr_len =
+              snprintf(chunk_header, sizeof(chunk_header), "%x\r\n", n);
+          send(sockfd, chunk_header, hdr_len, MSG_NOSIGNAL);
+          send(sockfd, buf, n, MSG_NOSIGNAL);
+          send(sockfd, "\r\n", 2, MSG_NOSIGNAL);
+        }
+        fclose(f);
+        send(sockfd, "0\r\n\r\n", 5, MSG_NOSIGNAL);
+      } else {
+        printf("Streaming error \n");
+        perror("Error opening file");
+        send(sockfd, "0\r\n\r\n", 5, MSG_NOSIGNAL);
+      }
       break;
     } else {
       printf("not myu link queing again\n");
@@ -49,6 +69,9 @@ void *api_function(void *arg) {
     sleep(1);
   }
 
+  char drain[1024];
+  while (recv(sockfd, drain, sizeof(drain), 0) > 0) {
+  }
   close(sockfd);
   free(args->link);
   free(args);
