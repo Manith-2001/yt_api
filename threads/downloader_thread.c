@@ -1,9 +1,11 @@
 #include "downloader_thread.h"
 #include "../utils/yt_downloader.h"
 #include "job_queue.h"
+#include "string.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/_pthread/_pthread_t.h>
 
 pthread_t download_thread;
 int id1 = 1;
@@ -19,10 +21,10 @@ void *download_function(void *arg) {
   int thread_id = *(int *)arg; // Cast the argument to an integer
   printf("Thread %d is running\n", thread_id);
   while (1) {
-    char *link = dequeu_download();
-    if (link) {
-      yt_download(link);
-      free(link);
-    }
+    download_msg d_msg = dequeu_download();
+    char *link = yt_download(d_msg.link);
+    enque_completed(link, d_msg.tid);
+    // TODO : incase you strdup the link
+    // free(d_msg.link);
   }
 }
