@@ -1,3 +1,3 @@
 #pragma once
 
-void yt_download(char *link);
+char *yt_download(char *link);
