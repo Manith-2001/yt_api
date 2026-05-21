@@ -1,9 +1,9 @@
 #include "job_queue.h"
-#include <_string.h>
+#include <string.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/_pthread/_pthread_t.h>
-#include <sys/fcntl.h>
+#include <pthread.h>
+#include <fcntl.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <unistd.h>

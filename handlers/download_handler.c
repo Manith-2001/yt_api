@@ -1,8 +1,8 @@
 #include "../mongoose/mongoose.h"
 #include "../threads/api_thread.h"
 #include "../threads/job_queue.h"
-#include <_string.h>
-#include <_time.h>
+#include <string.h>
+#include <time.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>

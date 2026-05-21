@@ -1,6 +1,6 @@
 #include "yt_downloader.h"
-#include <_stdio.h>
-#include <_string.h>
+#include <stdio.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 

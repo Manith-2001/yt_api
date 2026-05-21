@@ -1,12 +1,12 @@
 #include "api_thread.h"
 #include "job_queue.h"
-#include <_stdio.h>
-#include <_time.h>
+#include <stdio.h>
+#include <time.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/_pthread/_pthread_t.h>
+#include <pthread.h>
 #include <sys/socket.h>
 #include <unistd.h>
 

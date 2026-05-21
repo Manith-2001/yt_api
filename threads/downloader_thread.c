@@ -5,7 +5,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/_pthread/_pthread_t.h>
+#include <pthread.h>
 #include <unistd.h>
 
 pthread_t download_thread;
