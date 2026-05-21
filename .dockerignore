@@ -1,0 +1,10 @@
+a.out
+yt-api
+yt-api.dSYM/
+output.webm
+tmp/
+downloadqueue/
+completedqueue/
+.DS_Store
+*.o
+*.dSYM
