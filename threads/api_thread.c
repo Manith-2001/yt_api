@@ -1,13 +1,12 @@
 #include "api_thread.h"
 #include "job_queue.h"
-#include <stdio.h>
-#include <time.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
+#include <fcntl.h>
 #include <sys/socket.h>
+#include <time.h>
 #include <unistd.h>
 
 void *api_function(void *arg) {
@@ -15,6 +14,8 @@ void *api_function(void *arg) {
   pthread_t tid = pthread_self();
   printf("Spun api thread of id : %d\n", *(int *)tid);
   int sockfd = (int)(intptr_t)args->fd;
+  int flags = fcntl(sockfd, F_GETFL, 0);
+  fcntl(sockfd, F_SETFL, flags & ~O_NONBLOCK);
   enque_download(args->link, *(int *)tid);
   // Send headers once — no Content-Length, chunked encoding
   const char *headers = "HTTP/1.1 200 OK\r\n"
@@ -56,7 +57,7 @@ void *api_function(void *arg) {
         }
         fclose(f);
         send(sockfd, "0\r\n\r\n", 5, MSG_NOSIGNAL);
-	shutdown(sockfd, SHUT_WR);
+        shutdown(sockfd, SHUT_WR);
       } else {
         printf("Streaming error \n");
         perror("Error opening file");
