@@ -13,7 +13,7 @@ A lightweight C HTTP/HTTPS server built on [Mongoose v7.21](https://mongoose.ws/
 | Language | C (C99/C11) |
 | HTTP Library | [Mongoose v7.21](https://mongoose.ws/) (single-header, embedded) |
 | Build System | GNU Make |
-| TLS | Mongoose built-in TLS (no OpenSSL required) |
+| TLS | None (HTTP only) |
 | Threading | POSIX Threads (detached per-request + background worker) |
 | IPC | SysV Message Queues |
 | External Dependency | `yt-dlp` (runtime) |
@@ -84,7 +84,6 @@ The server starts listening on:
 | Protocol | Address |
 |---|---|
 | HTTP | `http://0.0.0.0:8000` |
-| HTTPS | `https://0.0.0.0:8443` |
 
 ## API Endpoints
 
@@ -108,12 +107,6 @@ curl -X POST http://localhost:8000/api/download \
 
 # Wrong method (returns 405)
 curl http://localhost:8000/api/download
-
-# HTTPS (self-signed cert — use -k)
-curl -k -N -X POST https://localhost:8443/api/download \
-  -H "Content-Type: application/json" \
-  -d '{"link":"https://youtu.be/..."}' \
-  -o video.webm
 ```
 
 > **Note:** Use `-N` with `curl` to disable buffering and see streaming progress. The response is raw binary data (video/webm by default), not JSON.
@@ -124,11 +117,11 @@ curl -k -N -X POST https://localhost:8443/api/download \
 |---|---|---|
 | `PROG` | Binary name | `yt-api` (`yt-api.exe` on Windows) |
 | `CC` | C compiler | `cc` |
-| `CFLAGS_EXTRA` | Additional Mongoose build flags | `-DMG_TLS=MG_TLS_BUILTIN` |
+| `CFLAGS_EXTRA` | Additional Mongoose build flags | *(empty)* |
 | `OUT` | Output file argument | `-o $(PROG)` |
 | `ARGS` | Arguments passed when running via `make` | *(empty)* |
 
-Listen addresses and TLS certificates are hardcoded in `main.c`. The server uses a self-signed EC (P-256) certificate for HTTPS.
+Listen address is hardcoded in `main.c`.
 
 ## Architecture
 
@@ -217,6 +210,8 @@ Each chunk is sent as: hex length + `\r\n` + data + `\r\n`. The final `0\r\n\r\n
 2. **Actual download**: `yt-dlp` to `./tmp/` using the captured filename template
 
 Files are saved to `./tmp/` with the naming scheme `%(id)s.%(ext)s`.
+
+After the download completes, the worker thread sleeps for 1 second before enqueuing the result to the `completedqueue`. This provides a simple (if blunt) mitigation for the file-flush race condition where the OS may not have fully persisted the file before the completion message is sent.
 
 ### Router Dispatch
 
