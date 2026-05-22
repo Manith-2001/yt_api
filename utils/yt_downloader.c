@@ -19,7 +19,7 @@ char *yt_download(char *link) {
   }
   printf("Path is : %s", path);
 
-  sprintf(command, "yt-dlp -P ./tmp/ -o \"%%(id)s.%%(ext)s\" \"%s\"", link);
+  sprintf(command, "yt-dlp -S \"height:720\" -P ./tmp/ -o \"%%(id)s.%%(ext)s\" \"%s\"", link);
   system(command);
   return strdup(path);
 }
