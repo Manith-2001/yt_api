@@ -26,6 +26,7 @@ void *download_function(void *arg) {
     char *link = yt_download(d_msg.link);
     sleep(1);
     enque_completed(link, d_msg.tid);
+    sleep(15);
     // TODO : incase you strdup the link
     // free(d_msg.link);
   }
