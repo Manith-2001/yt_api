@@ -1,17 +1,3 @@
-// Copyright (c) 2020 Cesanta Software Limited
-// All rights reserved
-//
-// HTTP server example. This server serves both static and dynamic content.
-// It opens two ports: plain HTTP on port 8000 and HTTP on port 8443.
-// It implements the following endpoints:
-//    /api/stats - respond with free-formatted stats on current connections
-//    /api/f2/:id - wildcard example, respond with JSON string {"result": "URI"}
-//    any other URI serves static files from s_root_dir
-//
-// To enable SSL/TLS (using self-signed certificates in PEM files),
-//    1. See https://mongoose.ws/tutorials/tls/#how-to-build
-//    2. curl -k https://127.0.0.1:8443
-
 #include "mongoose/mongoose.h"
 #include "router.h"
 #include "threads/downloader_thread.h"
@@ -21,7 +7,7 @@
 
 const struct mg_mem_file mg_packed_files[] = {{NULL, NULL, 0}};
 static const char *s_http_addr = "http://0.0.0.0:8000";   // HTTP port
-static const char *s_https_addr = "https://0.0.0.0:8443"; // HTTPS port
+static const char *s_https_addr = "https://0.0.0.0:8443"; // HTTPS port (for future implementation)
 static const char *s_root_dir = ".";
 
 static void fn(struct mg_connection *c, int ev, void *ev_data) {

@@ -28,16 +28,6 @@ void *api_function(void *arg) {
   char *json_body =
       "{\"status\": \"success\", \"message\": \"Your download is queued\"}";
   while (1) {
-    // char chunk[1024];
-    // int chunk_len = snprintf(chunk, sizeof(chunk),
-    //                          "%zx\r\n%s\r\n", // hex size, CRLF, data, CRLF
-    //                          strlen(json_body), json_body);
-
-    // int n = send(sockfd, chunk, chunk_len, MSG_NOSIGNAL);
-    // if (n <= 0) {
-    //   printf("client gone\n");
-    //   break; // client gone
-    // }
     completed_msg c_msg = dequeu_completed();
     printf("Got link : %s of id : %d\n", c_msg.link, c_msg.tid);
     if (c_msg.tid == *(int *)tid) {
@@ -47,7 +37,6 @@ void *api_function(void *arg) {
         char buf[8192];
         int n;
         while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
-          // printf("Sending chunk of size : %d\n", n);
           char chunk_header[32];
           int hdr_len =
               snprintf(chunk_header, sizeof(chunk_header), "%x\r\n", n);

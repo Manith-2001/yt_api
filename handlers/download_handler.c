@@ -1,6 +1,5 @@
 #include "../mongoose/mongoose.h"
 #include "../threads/api_thread.h"
-#include "../threads/job_queue.h"
 #include <string.h>
 #include <time.h>
 #include <pthread.h>
@@ -14,7 +13,6 @@ void data_handler(struct mg_connection *c, struct mg_http_message *hm) {
     mg_http_reply(c, 400, "", "{\"error\": \"missing 'link' field\"}\n");
     return;
   }
-  // enque_download(link);
   void *fd = c->fd;
   c->fd = (void *)MG_INVALID_SOCKET;
   c->is_closing = 1;
@@ -24,6 +22,5 @@ void data_handler(struct mg_connection *c, struct mg_http_message *hm) {
   pthread_t t;
   pthread_create(&t, NULL, api_function, args);
   pthread_detach(t);
-  // mg_http_reply(c, 200, "", "{\"received\": \"%s\"}\n", link);
   return;
 }

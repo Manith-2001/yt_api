@@ -28,6 +28,5 @@ void *download_function(void *arg) {
     enque_completed(link, d_msg.tid);
     sleep(15);
     // TODO : incase you strdup the link
-    // free(d_msg.link);
   }
 }
