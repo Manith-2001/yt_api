@@ -18,7 +18,7 @@ void data_handler(struct mg_connection *c, struct mg_http_message *hm) {
   c->is_closing = 1;
   WorkerArgs *args = calloc(1, sizeof(WorkerArgs));
   args->fd = fd;
-  args->link = link;
+  args->link = strdup(link);
   pthread_t t;
   pthread_create(&t, NULL, api_function, args);
   pthread_detach(t);
