@@ -4,6 +4,7 @@
 #include "threads/job_queue.h"
 #include "utils/utils.h"
 #include <pthread.h>
+#include <sys/stat.h>
 
 const struct mg_mem_file mg_packed_files[] = {{NULL, NULL, 0}};
 static const char *s_http_addr = "http://0.0.0.0:8000";   // HTTP port
@@ -21,6 +22,7 @@ int main(void) {
     return 0;
   }
   queue_init();
+  mkdir("tmp", 0755);
   download_thread_init();
   struct mg_mgr mgr;                            // Event manager
   mg_log_set(MG_LL_DEBUG);                      // Set log level
