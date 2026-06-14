@@ -1,5 +1,4 @@
 #pragma once
-#include "pthread.h"
 
 #define MAX_LINK_LEN 1024
 #define MAX_FMT_LEN 10

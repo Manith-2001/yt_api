@@ -101,16 +101,28 @@ The server starts listening on:
 
 | Route | Method | Description |
 |---|---|---|
-| `/api/download` | POST | Accepts JSON `{"link": "<url>"}`, downloads video via yt-dlp, streams binary data back using chunked transfer encoding |
+| `/api/download` | POST | Accepts JSON `{"link": "<url>"[, "format": "<webm|mp4|mkv|...>"]}`, downloads video via yt-dlp, streams binary data back using chunked transfer encoding. `format` is optional and defaults to `webm` |
 
 ### Example Requests
 
 ```bash
-# Stream a video (download + stream in real-time)
+# Stream a video (download + stream in real-time, defaults to webm)
 curl -N -X POST http://localhost:8000/api/download \
   -H "Content-Type: application/json" \
   -d '{"link":"https://www.youtube.com/watch?v=dQw4w9WgXcQ"}' \
   -o video.webm
+
+# Request a specific container format (mp4)
+curl -N -X POST http://localhost:8000/api/download \
+  -H "Content-Type: application/json" \
+  -d '{"link":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","format":"mp4"}' \
+  -o video.mp4
+
+# Request a specific container format (mkv)
+curl -N -X POST http://localhost:8000/api/download \
+  -H "Content-Type: application/json" \
+  -d '{"link":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","format":"mkv"}' \
+  -o video.mkv
 
 # Missing link field (returns 400)
 curl -X POST http://localhost:8000/api/download \
@@ -121,7 +133,7 @@ curl -X POST http://localhost:8000/api/download \
 curl http://localhost:8000/api/download
 ```
 
-> **Note:** Use `-N` with `curl` to disable buffering and see streaming progress. The response is raw binary data (video/webm by default), not JSON.
+> **Note:** Use `-N` with `curl` to disable buffering and see streaming progress. The response is raw binary data (video/webm by default, or whatever format was requested), not JSON.
 
 ## Configuration
 
@@ -151,7 +163,7 @@ Client Request
       ▼
 data_handler() ──steals fd──► api_function() pthread (detached)
       │                                │
-      │                         enque_download(link, tid)
+      │                         enque_download(link, fmt, tid)
       │                                │
       ▼                                ▼
  mg_http_reply()              downloadqueue (SysV msg queue)
@@ -159,7 +171,7 @@ data_handler() ──steals fd──► api_function() pthread (detached)
                                         ▼
                                download_function() [worker pthread]
                                         │
-                                        │ yt_download(link)
+                                        │ yt_download(link, fmt)
                                         ▼
                                completedqueue (SysV msg queue)
                                         │
@@ -218,8 +230,10 @@ Each chunk is sent as: hex length + `\r\n` + data + `\r\n`. The final `0\r\n\r\n
 
 `yt_download()` in `utils/yt_downloader.c` performs a two-step download:
 
-1. **Capture filename**: `yt-dlp -P ./tmp/ -o "%(id)s.%(ext)s" --print filename` to get the output path without downloading
-2. **Actual download**: `yt-dlp -S "height:720" -P ./tmp/ -o "%(id)s.%(ext)s"` to download the best 720p stream
+1. **Capture filename**: `yt-dlp --merge-output-format <fmt> -P ./tmp/ -o "%(id)s.%(ext)s" --print filename` to get the output path without downloading
+2. **Actual download**: `yt-dlp --merge-output-format <fmt> -S "height:720" -P ./tmp/ -o "%(id)s.%(ext)s"` to download the best 720p stream
+
+The `<fmt>` argument comes from the client's `"format"` JSON field (defaults to `webm`).
 
 The `-S "height:720"` flag selects the best format with a vertical resolution of at most 720 pixels. Files are saved to `./tmp/` with the naming scheme `%(id)s.%(ext)s`.
 
@@ -235,7 +249,6 @@ Mongoose ships as a single `.h` + `.c` pair with no external dependencies beyond
 
 ## Roadmap / TODO
 
-- [ ] **Extension selection**: Allow clients to specify desired file extension (e.g., `webm`, `mp4`) in the JSON payload. `yt-dlp` supports `-f` and post-processing flags to control output format. Pass through as an optional `format` or `ext` field in the request body.
 - [ ] **Rate throttling**: Implement per-client or global request rate limiting. Options: token bucket, sliding window, or simple per-IP cooldown via SysV shared memory or a lightweight in-memory counter map.
 - [ ] **Public deployment**: Deploy on a VPS with a domain for public access. Consider Docker containerization for easy deployment.
 
