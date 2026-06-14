@@ -25,7 +25,6 @@ void queue_init(void) {
 void enque_download(char *link, char *fmt, int tid) {
   download_msg d_msg;
   d_msg.mtype = 1;
-  size_t len = strlen(link);
   strcpy(d_msg.link, link);
   strcpy(d_msg.fmt, fmt);
   d_msg.tid = tid;
@@ -50,7 +49,6 @@ download_msg dequeu_download(void) {
 void enque_completed(char *link, int tid) {
   completed_msg c_msg;
   c_msg.mtype = 1;
-  size_t len = strlen(link);
   strcpy(c_msg.link, link);
   c_msg.tid = tid;
   if (msgsnd(completequeue_id, &c_msg, sizeof(completed_msg) - sizeof(long),

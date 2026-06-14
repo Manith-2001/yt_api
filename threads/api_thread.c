@@ -24,9 +24,6 @@ void *api_function(void *arg) {
                         "Connection: close\r\n\r\n";
   send(sockfd, headers, strlen(headers), 0);
 
-  // Keep sending chunks until client disconnects
-  char *json_body =
-      "{\"status\": \"success\", \"message\": \"Your download is queued\"}";
   while (1) {
     completed_msg c_msg = dequeu_completed();
     printf("Got link : %s of id : %d\n", c_msg.link, c_msg.tid);

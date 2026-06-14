@@ -9,7 +9,6 @@
 const struct mg_mem_file mg_packed_files[] = {{NULL, NULL, 0}};
 static const char *s_http_addr = "http://0.0.0.0:8000";   // HTTP port
 static const char *s_https_addr = "https://0.0.0.0:8443"; // HTTPS port (for future implementation)
-static const char *s_root_dir = ".";
 
 static void fn(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_HTTP_MSG) {

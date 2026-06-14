@@ -1,6 +1,7 @@
 #include "ANSI_colors.h"
 #include "stdbool.h"
 #include <dirent.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,8 +20,8 @@ bool check_yt_dlp() {
 
 char *id_extractor(char link[]) {
   char *id = malloc(12 * sizeof(char));
-  int start, end;
-  for (int i = 0; i < strlen(link); i++) {
+  int start = 0;
+  for (size_t i = 0; i < strlen(link); i++) {
     if (link[i] == '=') {
       start = i + 1;
       break;
