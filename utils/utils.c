@@ -44,9 +44,9 @@ char *video_exists(char *id) {
     if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
       continue;
     }
-    printf("File : %s\n", entry->d_name);
-    char *result = strstr(entry->d_name, id);
-    if (result != NULL) {
+    printf("File : %s and ID : %s\n", entry->d_name, id);
+    int result = strcmp(entry->d_name, id);
+    if (result == 0) {
       printf("File found\n");
       char *path;
       asprintf(&path, "./tmp/%s", entry->d_name);

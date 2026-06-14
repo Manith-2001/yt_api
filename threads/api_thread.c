@@ -1,10 +1,10 @@
 #include "api_thread.h"
 #include "job_queue.h"
+#include <fcntl.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
 #include <sys/socket.h>
 #include <time.h>
 #include <unistd.h>
@@ -16,11 +16,11 @@ void *api_function(void *arg) {
   int sockfd = (int)(intptr_t)args->fd;
   int flags = fcntl(sockfd, F_GETFL, 0);
   fcntl(sockfd, F_SETFL, flags & ~O_NONBLOCK);
-  enque_download(args->link, *(int *)tid);
+  enque_download(args->link, args->fmt, *(int *)tid);
   // Send headers once — no Content-Length, chunked encoding
   const char *headers = "HTTP/1.1 200 OK\r\n"
                         "Transfer-Encoding: chunked\r\n"
-                        "Content-Type: video/webm\r\n"
+                        "Content-Type: application/octet-stream\r\n"
                         "Connection: close\r\n\r\n";
   send(sockfd, headers, strlen(headers), 0);
 

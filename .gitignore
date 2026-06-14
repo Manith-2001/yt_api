@@ -56,3 +56,4 @@ dkms.conf
 yt-api
 /tmp
 *.DS_Store
+*queue

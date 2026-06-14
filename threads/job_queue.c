@@ -1,9 +1,8 @@
 #include "job_queue.h"
-#include <string.h>
+#include <fcntl.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <string.h>
-#include <pthread.h>
-#include <fcntl.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <unistd.h>
@@ -23,11 +22,12 @@ void queue_init(void) {
   completequeue_id = msgget(complete_key, 0666 | IPC_CREAT);
 }
 
-void enque_download(char *link, int tid) {
+void enque_download(char *link, char *fmt, int tid) {
   download_msg d_msg;
   d_msg.mtype = 1;
   size_t len = strlen(link);
   strcpy(d_msg.link, link);
+  strcpy(d_msg.fmt, fmt);
   d_msg.tid = tid;
   if (msgsnd(downloadqueue_id, &d_msg, sizeof(download_msg) - sizeof(long),
              0) == -1) {

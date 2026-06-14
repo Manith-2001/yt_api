@@ -5,7 +5,6 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <pthread.h>
 #include <unistd.h>
 
 pthread_t download_thread;
@@ -23,7 +22,7 @@ void *download_function(void *arg) {
   printf("Thread %d is running\n", thread_id);
   while (1) {
     download_msg d_msg = dequeu_download();
-    char *link = yt_download(d_msg.link);
+    char *link = yt_download(d_msg.link, d_msg.fmt);
     sleep(1);
     enque_completed(link, d_msg.tid);
     sleep(15);

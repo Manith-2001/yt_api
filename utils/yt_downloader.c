@@ -4,17 +4,20 @@
 #include <stdlib.h>
 #include <string.h>
 
-char *yt_download(char *link) {
+char *yt_download(char *link, char *fmt) {
   char *yt_id = id_extractor(link);
-  char *yt_path = video_exists(yt_id);
+  char *file_name = strcat(yt_id, ".");
+  file_name = strcat(file_name, fmt);
+  char *yt_path = video_exists(file_name);
   free(yt_id);
   if (yt_path != NULL) {
     return strdup(yt_path);
   }
   char command[1536];
   sprintf(command,
-          "yt-dlp -P ./tmp/ -o \"%%(id)s.%%(ext)s\" --print filename \"%s\"",
-          link);
+          "yt-dlp --merge-output-format %s -P ./tmp/ -o \"%%(id)s.%%(ext)s\" "
+          "--print filename \"%s\"",
+          fmt, link);
   FILE *fp = popen(command, "r");
   char path[1024];
   fgets(path, sizeof(path), fp);
@@ -26,8 +29,9 @@ char *yt_download(char *link) {
   printf("Path is : %s\n", path);
 
   sprintf(command,
-          "yt-dlp -S \"height:720\" -P ./tmp/ -o \"%%(id)s.%%(ext)s\" \"%s\"",
-          link);
+          "yt-dlp --merge-output-format %s -S \"height:720\" -P ./tmp/ -o "
+          "\"%%(id)s.%%(ext)s\" \"%s\"",
+          fmt, link);
   system(command);
   return strdup(path);
 }
