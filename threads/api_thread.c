@@ -19,6 +19,7 @@ void *api_function(void *arg) {
   enque_download(args->link, args->fmt, *(int *)tid);
   // Send headers once — no Content-Length, chunked encoding
   const char *headers = "HTTP/1.1 200 OK\r\n"
+                        "Access-Control-Allow-Origin: *\r\n"
                         "Transfer-Encoding: chunked\r\n"
                         "Content-Type: application/octet-stream\r\n"
                         "Connection: close\r\n\r\n";

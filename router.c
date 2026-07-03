@@ -7,11 +7,21 @@ static const route s_routes[] = {{"/api/download", "POST", data_handler}};
 void dispatch(struct mg_connection *c, struct mg_http_message *hm) {
   for (size_t i = 0; i < sizeof(s_routes) / sizeof(s_routes[0]); i++) {
     const route *r = &s_routes[i];
+    if (mg_match(hm->method, mg_str("OPTIONS"), NULL)) {
+      mg_http_reply(c, 204,
+                    "Access-Control-Allow-Origin: *\r\n"
+                    "Access-Control-Allow-Methods: POST, OPTIONS\r\n"
+                    "Access-Control-Allow-Headers: Content-Type\r\n"
+                    "Access-Control-Max-Age: 86400\r\n",
+                    "");
+      return;
+    }
     if (!mg_match(hm->uri, mg_str(r->uri), NULL))
       continue;
     if (mg_match(hm->uri, mg_str(r->uri), NULL)) {
       if (!mg_match(hm->method, mg_str(r->method), NULL)) {
-        mg_http_reply(c, 405, "", "{\"error\": \"method not allowed\"}\n");
+        mg_http_reply(c, 405, "Access-Control-Allow-Origin: *\r\n",
+                      "{\"error\": \"method not allowed\"}\n");
         return;
       }
     }
@@ -19,5 +29,6 @@ void dispatch(struct mg_connection *c, struct mg_http_message *hm) {
     return;
   }
 
-  mg_http_reply(c, 404, "", "{Path Not found}\n", 0, NULL);
+  mg_http_reply(c, 404, "Access-Control-Allow-Origin: *\r\n",
+                "{Path Not found}\n", 0, NULL);
 }

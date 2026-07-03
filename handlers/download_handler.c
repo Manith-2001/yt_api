@@ -11,7 +11,8 @@ void data_handler(struct mg_connection *c, struct mg_http_message *hm) {
   char *fmt = mg_json_get_str(hm->body, "$.format");
 
   if (link == NULL) {
-    mg_http_reply(c, 400, "", "{\"error\": \"missing 'link' field\"}\n");
+    mg_http_reply(c, 400, "Access-Control-Allow-Origin: *\r\n",
+                  "{\"error\": \"missing 'link' field\"}\n");
     return;
   }
   if (fmt == NULL) {
